@@ -52,7 +52,7 @@ Phase 1 から Phase 3 までのプロンプト内では、以下を「推奨デ
 
 - Go バージョン: Phase 1 で実行時点の公式サポート状況と既存 `go.mod` を確認し、最低対応バージョンを確定する
 - CLI フレームワーク: `spf13/cobra`
-- 設定ファイル読込: `spf13/viper`（採否は Phase 1 で確認）
+- 設定ファイル読込: `knadh/koanf` もしくは `spf13/viper`（採否は Phase 1 で確認）
 - ロガー: 標準 `log/slog`
 - リンタ: `golangci-lint`（実行時点の安定版）
 - リリースツール: GoReleaser
@@ -388,6 +388,7 @@ Phase 1 プロンプトが受け取る入力は、最低限以下を想定する
 - 確定版を変更する場合は、再度ドラフトに戻して差分を提示し、ユーザ承認後に再書き出しすること（確定版を直接上書きしないこと）
 - ユーザが「停止」と言った場合に、状態管理ファイルを更新してから停止すること
 - 冒頭で「新規 / 既存」の別を必ず確認し、既存の場合は `.ai/specs/overview/current-state-report.md` を生成する分岐に入ること
+- 冒頭で `.ai/session/*` の既存有無を確認し、既存がある場合は「追記して継続 / 既存をアーカイブして新規初期化 / 既存をそのまま活用」のいずれを取るかをユーザ確認すること。AI 側で勝手にリセットしないこと
 - `current-state-report.md` には最低限以下を含めること: リポジトリ名と Go モジュール名 / 既存 `go.mod` の最低 Go バージョン / 主要依存パッケージ一覧 / 既存 CLI コマンド体系の有無と概要 / 既存 CI ジョブ一覧（ワークフローファイル名と用途）/ 既存テストの有無と種別 / 既存 README の有無と内容要約 / 既存規約ファイル（AGENTS.md, CLAUDE.md, `.editorconfig` 等）の有無 / 既存リリース運用（タグ・GoReleaser 設定の有無）/ 既知の制約や TODO
 
 ### Phase 1 初期確認の必須項目
@@ -463,8 +464,9 @@ Phase 2 プロンプトが受け取る入力は、最低限以下を想定する
 - 詳細化の過程で追加確認が必要な場合は、1回につき1項目だけユーザへ質問すること
 - ドキュメント構成を確定する前にユーザ確認を行うこと
 - `coding_rules/` には Phase 3 で `AGENTS.md` へ移管するための規約ドラフトを置くこと
-- Phase 2 時点の `coding_rules/` には、Phase 3 で `AGENTS.md` を canonical にし、移管後は参照索引へ縮約する方針を明記すること
+- `coding_rules/index.md` の冒頭に、「Phase 2 時点はドラフト、Phase 3 で `AGENTS.md` を canonical に確定、移管後は本ディレクトリを参照索引へ縮約する」運用方針と、AGENTS.md の各セクションと `coding_rules/` 配下ファイルの対応表を必ず書かせること
 - 既存リポジトリの場合、`current-state-report.md` と既存ドキュメントを参照する。既存仕様と新規方針に齟齬がある場合は勝手に解決せず、`open-questions.md` に記録してユーザ確認すること
+- ユーザが「停止」と言った場合に、状態管理ファイル（`current-state.md` / `next-actions.md` / `handoff.md`）を更新してから停止すること
 
 ### ドキュメント構成
 
@@ -482,7 +484,7 @@ Phase 2 プロンプトでは、以下の構成を基本として詳細仕様書
 - `ci/workflows.md`, `ci/matrix.md`, `ci/secrets.md`
 - `deployment/goreleaser.md`, `deployment/signing.md`, `deployment/distribution.md`
 - `security/secrets.md`, `security/dependencies.md`
-- `coding_rules/index.md`, `coding_rules/go.md`, `coding_rules/logging.md`, `coding_rules/errors.md`, `coding_rules/testing.md`
+- `coding_rules/index.md`, `coding_rules/go.md`, `coding_rules/logging.md`, `coding_rules/errors.md`, `coding_rules/quality.md`, `coding_rules/testing.md`, `coding_rules/version-build.md`, `coding_rules/cross-platform.md`（AGENTS.md の規約セクションと1対1対応するよう分割し、Phase 3 で移管しやすくする）
 
 ### `.ai/specs/index.md` 雛形
 
@@ -564,7 +566,7 @@ Phase 2 プロンプトでは、最低限以下を詳細仕様書群へ含めさ
 
 Phase 1 の概略仕様書と Phase 2 の詳細仕様書群を入力として、AIコードエージェントが実装・テスト・リリース準備を進めるための実装プロンプトを `.ai/implementation/prompt.md` に生成する。
 
-この依頼では Phase 3 用の実装プロンプトを作成するだけであり、実装そのものは行わない。
+この依頼では `.ai/implementation/prompt.md` と `.ai/implementation/*` の進捗管理ファイル、および `AGENTS.md` / `CLAUDE.md` / `coding_rules/` の参照索引化までを生成するだけで、ソースコード追加・`go.mod` 生成・ビルド・テスト・lint 実行は行わない（実装そのものは Phase 4 のエージェントが行う）。
 
 ### 入力
 
@@ -589,6 +591,7 @@ Phase 3 プロンプトが受け取る入力は、最低限以下を想定する
 - 実装中に仕様不足を見つけた場合、勝手に仕様を補完して実装せず、質問または `open-questions.md` への記録を行うこと
 - 生成する Phase 4 用実装プロンプトには、実装エージェントが `git add` / `git commit` / `git push` を行う前にユーザ確認するルールを含めること
 - 生成する `.ai/implementation/prompt.md` は「会話履歴ゼロのエージェントへ貼り付けても動く」自己完結性をもつこと
+- ユーザが「停止」と言った場合に、状態管理ファイル（`current-state.md` / `next-actions.md` / `handoff.md`）と進捗管理ファイル（`tasks.md` / `checkpoints.md`）の必要箇所を更新してから停止すること
 
 ### 進捗管理ファイル
 
@@ -655,6 +658,96 @@ Phase 3 プロンプトには、最低限以下の進捗管理ファイルを生
 - ユーザ確認の要否:
 ```
 
+### `.ai/implementation/prompt.md` の構造とセクション雛形
+
+Phase 3 で生成する Phase 4 用実装プロンプトは、別エージェント・会話履歴ゼロでも動く自己完結性をもつこと。
+最低限、以下のセクションを含めさせること。
+
+- `# 目的`
+- `# 役割定義`（実装エージェントの役割と前提）
+- `# 入力ファイル`（必読: `overview/spec.md`, `specs/index.md`, `AGENTS.md`, `.ai/session/current-state.md`, `.ai/session/handoff.md`, `.ai/session/open-questions.md` / 必要時参照: `.ai/specs/<area>/*` / 参照ルール: index.md から必要分のみ）
+- `# 出力と制約`（生成対象、出力先パス、生成しないものの明示）
+- `# 採用スタックと言語規約`（Phase 1 確定値を引用、ユーザ向け出力は日本語・識別子/ログキーは英語）
+- `# 作業手順`（`plan.md` → `tasks.md` 駆動、1タスク完了ごとに `tasks.md` と `current-state.md` を更新）
+- `# git 操作ルール`（`git add` / `git commit` / `git push` は実行前に必ずユーザ確認、コミット粒度はタスク単位、`--no-verify` 等のフック回避禁止、`main` への直 push 可否は Phase 1 / Phase 2 合意に従う）
+- `# テスト・ビルド・lint の取扱い`（失敗時は自動的に仕様を曲げない、原因と対処案を `test-report.md` と `open-questions.md` に記録してからユーザ確認、`-race` 実行対象は CI マトリックス通り）
+- `# 未確定事項の扱い`（仕様不足や齟齬を見つけたら勝手に補完せず `open-questions.md` に記録して該当領域の作業を停止し別領域へ進む）
+- `# 状態管理ファイル連携`（更新タイミング、更新対象、コミット粒度との関係）
+- `# 停止・再開`（停止時に更新するファイル、再開時に最初に読むファイル、再開前ユーザ確認事項）
+- `# 完了条件`（CI グリーン、`test-report.md` の埋まり、`release-notes-draft.md` の更新、`AGENTS.md` 整備、`coding_rules/` の参照索引化完了、ユーザ承認）
+- `# 禁止事項`（実装範囲外への踏み込み、エージェント固有機能依存、機密情報の `.ai/` 配下記録、未確認の外部サービス前提化、ユーザ確認なしの git 操作 など）
+
+Markdown 雛形例:
+
+````markdown
+# Phase 4 実装プロンプト
+
+## 目的
+...
+
+## 役割定義
+...
+
+## 入力ファイル
+- 必読:
+  - .ai/specs/overview/spec.md
+  - .ai/specs/index.md
+  - AGENTS.md
+  - .ai/session/current-state.md
+  - .ai/session/handoff.md
+  - .ai/session/open-questions.md
+- 必要時のみ参照: .ai/specs/<area>/*（index.md の「タスク種別ごとの参照先」に従い必要分のみ）
+
+## 出力と制約
+- 生成対象: cmd/<name>/, internal/<pkg>/, テスト, CI ワークフロー, GoReleaser 設定, README など
+- 生成しないもの: 仕様変更、エージェント固有規約ファイル、機密情報
+
+## 採用スタックと言語規約
+- スタック: Phase 1 確定値（Go バージョン / Cobra / log/slog / golangci-lint / GoReleaser など）
+- ユーザ向け出力は日本語、識別子・ログキー・コミット Subject は英語
+
+## 作業手順
+1. .ai/implementation/plan.md の順序に従う
+2. .ai/implementation/tasks.md の todo を1件取り出して doing に変える
+3. 実装・テスト
+4. 完了したら tasks.md と current-state.md を更新
+5. チェックポイントに到達したらユーザ確認
+
+## git 操作ルール
+- git add / git commit / git push は実行前に必ずユーザへ確認すること
+- コミット粒度はタスク単位を基本とし、--no-verify など hook 回避は禁止
+- main への直 push 可否は Phase 1 / Phase 2 の合意に従う
+
+## テスト・ビルド・lint の取扱い
+- 失敗時に仕様を勝手に曲げないこと
+- 原因と対処案を test-report.md と open-questions.md に記録し、ユーザ確認を行うこと
+
+## 未確定事項の扱い
+- 仕様不足や齟齬を見つけたら open-questions.md に記録し、当該領域の作業を停止して別領域へ進む
+
+## 状態管理ファイル連携
+- 1タスク完了ごとに tasks.md / current-state.md を更新
+- 停止前に handoff.md と next-actions.md を更新
+
+## 停止・再開
+- 停止時更新: current-state.md, next-actions.md, handoff.md
+- 再開時必読: current-state.md, handoff.md, decisions.md, open-questions.md
+- 再開前にユーザへ前回未解決事項の確認
+
+## 完了条件
+- CI グリーン
+- test-report.md / release-notes-draft.md の更新
+- AGENTS.md 整備、coding_rules/ の参照索引化
+- ユーザ承認
+
+## 禁止事項
+- 実装範囲外への踏み込み
+- スラッシュコマンド / MCP / IDE 固有機能 / エージェント固有タスクシステムへの依存
+- 機密情報・トークン・秘密鍵を生成物および .ai/ 配下へ記録すること
+- 未確認の外部サービス・ライブラリ・CI/CD 設定を前提化すること
+- ユーザ確認なしでの git 操作（add / commit / push / reset / push --force / ブランチ削除）
+````
+
 ### GitHub Actions
 
 Phase 3 プロンプトでは、以下を対象にした CI/CD 設計と実装タスクを含めさせること。
@@ -670,7 +763,7 @@ Phase 3 プロンプトでは、以下を対象にした CI/CD 設計と実装�
 CI マトリックスの最低構成として、以下を明記すること。
 
 - OS: `ubuntu-latest` / `macos-latest` / `windows-latest`
-- Go: 実行時点の公式サポート状況を確認し、現行安定版と1つ前の安定版を候補にする
+- Go: Phase 1 で確定した最低対応バージョン以上、かつ実行時点の公式サポート2系を選定する。両者がずれた場合は Phase 1 確定値を最低ラインとし、上方向へ公式サポート2系を選ぶ。CI マトリックスの具体バージョンは Phase 2 で `ci/matrix.md` に固定する
 - `-race` は `ubuntu-latest` のみ実行可とする運用例も合わせて示す
 - キャッシュは Go modules と build cache を併用
 
@@ -697,7 +790,7 @@ Phase 3 プロンプトでは、AIコードエージェント向けファイル�
 
 Phase 2 で `.ai/specs/coding_rules/` に書いた規約ドラフトは、Phase 3 で AGENTS.md へ移管すること。移管後の `.ai/specs/coding_rules/` は AGENTS.md の対応セクションへの参照索引（リンクと短い説明のみ）として残し、規約本文を二重に保持しないこと。
 
-`AGENTS.md` には、最低限以下の規約を含めさせること。
+`AGENTS.md` には、最低限以下の規約を含めさせること。セクション順は、コーディング規約 → ログ規約 → エラー規約 → 品質規約 → テスト規約 → バージョン・ビルド規約 → クロスプラットフォーム規約、を推奨し、`coding_rules/` 配下ファイルとの1対1対応を保つこと。
 
 #### コーディング規約
 
@@ -821,5 +914,12 @@ Phase 2 で `.ai/specs/coding_rules/` に書いた規約ドラフトは、Phase 
 - 言語ハイブリッド方針（ユーザ向け出力は日本語、識別子・ログキーは英語）が一貫して書かれているか
 - スラッシュコマンド / MCP / IDE 固有機能 / エージェント固有タスクシステムへの依存が排除されているか
 - `.ai/` 配下を Git 追跡対象に含める方針と、実際のコミット操作前にユーザ確認する方針が明示されているか
+- 機密情報・個人情報・トークン・秘密鍵を `.ai/` 配下にも記録しない方針が明示されているか
+- `coding_rules/` の Phase 2 ドラフト → Phase 3 で `AGENTS.md` 移管 → 移管後は参照索引、の二段運用が一貫して書かれているか
+- Phase 4 用実装プロンプトに、git 操作（`git add` / `git commit` / `git push` 等）前のユーザ確認ルールが含まれているか
+- Phase 3 が生成する `.ai/implementation/prompt.md` の構造とセクション雛形が示されているか
+- Phase 1 で `current-state-report.md` の生成要素チェックリストが明示されているか
+- Phase 1 で `.ai/session/*` 既存ファイルの取り扱い（追記 / アーカイブ初期化 / 既存活用）をユーザ確認する手順が明示されているか
+- CI マトリックスの Go バージョン決定原則（Phase 1 確定値以上、かつ公式サポート2系）が明示されているか
 - コンテキスト肥大化対策が具体的か
 - 日本語 Markdown として読みやすく、別のAIコードエージェントへそのまま渡せるか
