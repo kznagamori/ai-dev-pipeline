@@ -60,7 +60,7 @@ Phase 1 から Phase 3 までのプロンプト内では、以下を「推奨デ
 - テスト基盤: 標準 `testing` + 必要に応じ `testscript` + golden file
 - バージョン情報埋め込み: `-ldflags "-X main.version=..."` など
 
-このスタックを Phase 2 の `architecture/`、`ci/`、`deployment/`、`coding_rules/` に必ず反映させること。
+このスタックを Phase 2 の `architecture/`、`config/`、`ci/`、`deployment/`、`coding_rules/` に必ず反映させること。
 ただし、`coding_rules/` の規約本文は Phase 3 で `AGENTS.md` へ移管し、移管後は参照索引として扱うこと。
 
 ---
@@ -388,7 +388,7 @@ Phase 1 プロンプトが受け取る入力は、最低限以下を想定する
 - 確定版を変更する場合は、再度ドラフトに戻して差分を提示し、ユーザ承認後に再書き出しすること（確定版を直接上書きしないこと）
 - ユーザが「停止」と言った場合に、状態管理ファイルを更新してから停止すること
 - 冒頭で「新規 / 既存」の別を必ず確認し、既存の場合は `.ai/specs/overview/current-state-report.md` を生成する分岐に入ること
-- 冒頭で `.ai/session/*` の既存有無を確認し、既存がある場合は「追記して継続 / 既存をアーカイブして新規初期化 / 既存をそのまま活用」のいずれを取るかをユーザ確認すること。AI 側で勝手にリセットしないこと
+- 冒頭で `.ai/session/*` の既存有無を確認し、既存がある場合は「追記して継続 / `.ai/archive/session-YYYYMMDD-HHMMSS/` へ退避して新規初期化 / 既存をそのまま活用」のいずれを取るかをユーザ確認すること。AI 側で勝手にリセット・削除しないこと
 - `current-state-report.md` には最低限以下を含めること: リポジトリ名と Go モジュール名 / 既存 `go.mod` の最低 Go バージョン / 主要依存パッケージ一覧 / 既存 CLI コマンド体系の有無と概要 / 既存 CI ジョブ一覧（ワークフローファイル名と用途）/ 既存テストの有無と種別 / 既存 README の有無と内容要約 / 既存規約ファイル（AGENTS.md, CLAUDE.md, `.editorconfig` 等）の有無 / 既存リリース運用（タグ・GoReleaser 設定の有無）/ 既知の制約や TODO
 
 ### Phase 1 初期確認の必須項目
@@ -398,7 +398,7 @@ Phase 1 プロンプトが受け取る入力は、最低限以下を想定する
 
 - リポジトリ種別（新規 / 既存）
 - 公開範囲（社内 / OSS 公開）と README / ヘルプの言語選択（日本語 / 英語）
-- 推奨スタック（Phase 1 で確定する Go バージョン / Cobra / log/slog / golangci-lint / GoReleaser）を採用するか、差し替えるか
+- 推奨スタック（Phase 1 で確定する Go バージョン / Cobra / koanf または Viper / log/slog / golangci-lint / GoReleaser / govulncheck）を採用するか、差し替えるか
 - 対応 OS / ARCH（linux, macos, windows × amd64, arm64 の標準セットでよいか）
 - 配布形態（GitHub Releases、`go install`、Homebrew、Scoop、Docker のどれを使うか）
 - リリース時の追加要素（cosign 署名、SBOM 生成）の要否
@@ -566,7 +566,8 @@ Phase 2 プロンプトでは、最低限以下を詳細仕様書群へ含めさ
 
 Phase 1 の概略仕様書と Phase 2 の詳細仕様書群を入力として、AIコードエージェントが実装・テスト・リリース準備を進めるための実装プロンプトを `.ai/implementation/prompt.md` に生成する。
 
-この依頼では `.ai/implementation/prompt.md` と `.ai/implementation/*` の進捗管理ファイル、および `AGENTS.md` / `CLAUDE.md` / `coding_rules/` の参照索引化までを生成するだけで、ソースコード追加・`go.mod` 生成・ビルド・テスト・lint 実行は行わない（実装そのものは Phase 4 のエージェントが行う）。
+Phase 3 用プロンプトには、Phase 4 実行時に `.ai/implementation/prompt.md`、`.ai/implementation/*` の進捗管理ファイル、`AGENTS.md` / `CLAUDE.md`、および `coding_rules/` の参照索引化を行わせる手順を含めること。
+ただし、このメタプロンプトへの回答では、ソースコード追加・`go.mod` 生成・ビルド・テスト・lint 実行は行わない（実装そのものは Phase 4 のエージェントが行う）。
 
 ### 入力
 
@@ -610,7 +611,7 @@ Phase 3 プロンプトには、最低限以下の進捗管理ファイルを生
 # implementation plan
 
 ## 実装方針
-- 採用スタック: Phase 1 で確定した Go バージョン / Cobra / log/slog / golangci-lint / GoReleaser
+- 採用スタック: Phase 1 で確定した Go バージョン / Cobra / koanf または Viper / log/slog / golangci-lint / GoReleaser / govulncheck
 - 言語方針: ユーザ向け出力は日本語、識別子・ログキーは英語
 - 既存 / 新規: <Phase 1 で決定>
 
@@ -699,11 +700,11 @@ Markdown 雛形例:
 - 必要時のみ参照: .ai/specs/<area>/*（index.md の「タスク種別ごとの参照先」に従い必要分のみ）
 
 ## 出力と制約
-- 生成対象: cmd/<name>/, internal/<pkg>/, テスト, CI ワークフロー, GoReleaser 設定, README など
-- 生成しないもの: 仕様変更、エージェント固有規約ファイル、機密情報
+- Phase 4 で作成・更新する候補: cmd/<name>/, internal/<pkg>/, テスト, CI ワークフロー, GoReleaser 設定, README など
+- 行わないこと: 未承認の仕様変更、エージェント固有規約ファイルの新規作成、機密情報の記録
 
 ## 採用スタックと言語規約
-- スタック: Phase 1 確定値（Go バージョン / Cobra / log/slog / golangci-lint / GoReleaser など）
+- スタック: Phase 1 確定値（Go バージョン / Cobra / koanf または Viper / log/slog / golangci-lint / GoReleaser / govulncheck など）
 - ユーザ向け出力は日本語、識別子・ログキー・コミット Subject は英語
 
 ## 作業手順
@@ -919,7 +920,7 @@ Phase 2 で `.ai/specs/coding_rules/` に書いた規約ドラフトは、Phase 
 - Phase 4 用実装プロンプトに、git 操作（`git add` / `git commit` / `git push` 等）前のユーザ確認ルールが含まれているか
 - Phase 3 が生成する `.ai/implementation/prompt.md` の構造とセクション雛形が示されているか
 - Phase 1 で `current-state-report.md` の生成要素チェックリストが明示されているか
-- Phase 1 で `.ai/session/*` 既存ファイルの取り扱い（追記 / アーカイブ初期化 / 既存活用）をユーザ確認する手順が明示されているか
+- Phase 1 で `.ai/session/*` 既存ファイルの取り扱い（追記 / `.ai/archive/session-YYYYMMDD-HHMMSS/` へ退避して新規初期化 / 既存活用）をユーザ確認する手順が明示されているか
 - CI マトリックスの Go バージョン決定原則（Phase 1 確定値以上、かつ公式サポート2系）が明示されているか
 - コンテキスト肥大化対策が具体的か
 - 日本語 Markdown として読みやすく、別のAIコードエージェントへそのまま渡せるか
