@@ -60,7 +60,8 @@ Phase 1 から Phase 3 までのプロンプト内では、以下を「推奨デ
 - テスト基盤: 標準 `testing` + 必要に応じ `testscript` + golden file
 - バージョン情報埋め込み: `-ldflags "-X main.version=..."` など
 
-このスタックを Phase 2 の `architecture/` および `coding_rules/` に必ず反映させること。
+このスタックを Phase 2 の `architecture/`、`ci/`、`deployment/`、`coding_rules/` に必ず反映させること。
+ただし、`coding_rules/` の規約本文は Phase 3 で `AGENTS.md` へ移管し、移管後は参照索引として扱うこと。
 
 ---
 
@@ -129,7 +130,7 @@ Phase 1 から Phase 3 までのプロンプト内では、以下を「推奨デ
     ci/
     deployment/
     security/
-    coding_rules/                # Phase 3 で AGENTS.md / CLAUDE.md へ移管する規約の索引
+    coding_rules/                # Phase 2 の規約ドラフト。Phase 3 で AGENTS.md へ移管後は参照索引
   implementation/
     prompt.md                    # Phase 3 が生成する「Phase 4 用の実装プロンプト本文」
     plan.md
@@ -461,7 +462,8 @@ Phase 2 プロンプトが受け取る入力は、最低限以下を想定する
 - Phase 1 の未確定事項を勝手に詳細仕様へ昇格させないこと
 - 詳細化の過程で追加確認が必要な場合は、1回につき1項目だけユーザへ質問すること
 - ドキュメント構成を確定する前にユーザ確認を行うこと
-- `coding_rules/` は Phase 3 で生成する AGENTS.md / CLAUDE.md への移管方針を示す index に留めること（Phase 3 で生成される AGENTS.md / CLAUDE.md と内容重複させない）
+- `coding_rules/` には Phase 3 で `AGENTS.md` へ移管するための規約ドラフトを置くこと
+- Phase 2 時点の `coding_rules/` には、Phase 3 で `AGENTS.md` を canonical にし、移管後は参照索引へ縮約する方針を明記すること
 - 既存リポジトリの場合、`current-state-report.md` と既存ドキュメントを参照する。既存仕様と新規方針に齟齬がある場合は勝手に解決せず、`open-questions.md` に記録してユーザ確認すること
 
 ### ドキュメント構成
@@ -480,7 +482,7 @@ Phase 2 プロンプトでは、以下の構成を基本として詳細仕様書
 - `ci/workflows.md`, `ci/matrix.md`, `ci/secrets.md`
 - `deployment/goreleaser.md`, `deployment/signing.md`, `deployment/distribution.md`
 - `security/secrets.md`, `security/dependencies.md`
-- `coding_rules/index.md`（Phase 3 で AGENTS.md / CLAUDE.md へ移管する規約の索引）
+- `coding_rules/index.md`, `coding_rules/go.md`, `coding_rules/logging.md`, `coding_rules/errors.md`, `coding_rules/testing.md`
 
 ### `.ai/specs/index.md` 雛形
 
@@ -505,7 +507,7 @@ Phase 2 プロンプトには、以下の雛形を内包させ、エージェン
 - ci/            … GitHub Actions 構成
 - deployment/    … GoReleaser / 配布
 - security/      … 秘密情報・依存
-- coding_rules/  … Phase 3 で AGENTS.md / CLAUDE.md へ移管する規約の索引
+- coding_rules/  … Phase 2 時点の規約ドラフト。Phase 3 で AGENTS.md へ移管後は参照索引
 
 ## タスク種別ごとの参照先
 - 新しいサブコマンドを追加する → cli/commands.md, cli/flags.md, testing/unit.md
@@ -572,7 +574,7 @@ Phase 3 プロンプトが受け取る入力は、最低限以下を想定する
 - `.ai/specs/index.md`
 - Phase 2 の詳細仕様書群
 - Phase 1 から Phase 2 までの `.ai/session/*` 状態管理ファイル
-- 既存リポジトリがある場合は、そのコード、設定、CI 定義、`current-state-report.md`
+- 既存リポジトリがある場合は、`current-state-report.md` を入口にし、必要な範囲のコード、設定、CI 定義のみを参照すること
 
 ### 要求
 
@@ -584,7 +586,8 @@ Phase 3 プロンプトが受け取る入力は、最低限以下を想定する
 - 仕様書を必要な範囲だけ読む手順を含めること
 - 実装前に、未確定事項とブロッカーを確認すること
 - 実装タスク分割を確定する前にユーザ確認を行うこと
-- 実装中に仕様不足を見つけた場合、勝手に実装せず、質問または `open-questions.md` への記録を行うこと
+- 実装中に仕様不足を見つけた場合、勝手に仕様を補完して実装せず、質問または `open-questions.md` への記録を行うこと
+- 生成する Phase 4 用実装プロンプトには、実装エージェントが `git add` / `git commit` / `git push` を行う前にユーザ確認するルールを含めること
 - 生成する `.ai/implementation/prompt.md` は「会話履歴ゼロのエージェントへ貼り付けても動く」自己完結性をもつこと
 
 ### 進捗管理ファイル
@@ -690,7 +693,7 @@ Phase 3 プロンプトでは、AIコードエージェント向けファイル�
 - `AGENTS.md`（canonical）
 - `CLAUDE.md`（AGENTS.md を参照する短い案内ファイルでよい。重複コンテンツを保守しない方針を明示）
 
-エージェント固有規約ファイル（`.cursor/rules/`, `.clinerules`, `.cline/`, `.windsurfrules`, `.github/copilot-instructions.md` 等）は新規作成しないこと。既存リポジトリに既にある場合は、そのファイルから AGENTS.md を参照する短い案内のみへ縮約することをユーザ確認のうえ行うこと。AGENTS.md と `.ai/specs/coding_rules/` を真正とし、規約の重複保守を避けること。
+エージェント固有規約ファイル（`.cursor/rules/`, `.clinerules`, `.cline/`, `.windsurfrules`, `.github/copilot-instructions.md` 等）は新規作成しないこと。既存リポジトリに既にある場合は、そのファイルから AGENTS.md を参照する短い案内のみへ縮約することをユーザ確認のうえ行うこと。Phase 3 以降は AGENTS.md を真正とし、`.ai/specs/coding_rules/` は AGENTS.md への参照索引に留め、規約の重複保守を避けること。
 
 Phase 2 で `.ai/specs/coding_rules/` に書いた規約ドラフトは、Phase 3 で AGENTS.md へ移管すること。移管後の `.ai/specs/coding_rules/` は AGENTS.md の対応セクションへの参照索引（リンクと短い説明のみ）として残し、規約本文を二重に保持しないこと。
 
