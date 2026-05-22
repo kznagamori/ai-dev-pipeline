@@ -44,23 +44,23 @@
 
 ---
 
-## 推奨技術スタック（Phase 1 で確定）
+## 推奨技術スタック（Phase 1 で上書き可）
 
 Phase 1 から Phase 3 までのプロンプト内では、以下を「推奨デフォルト」として明示すること。
 ただし、ユーザが Phase 1 で別のスタックを選んだ場合は上書きを許容すること。
 
 - Go バージョン: Phase 1 で実行時点の公式サポート状況と既存 `go.mod` を確認し、最低対応バージョンを確定する
-- Wails: Phase 1 で実行時点の公式ドキュメント、既存 `wails.json`、既存プロジェクト構成を確認し、利用バージョンを確定する
+- Wails: Phase 1 で実行時点の公式ドキュメント、既存 `wails.json`、既存プロジェクト構成を確認し、利用バージョン（v2 / v3 のいずれか）を確定する。v3 は安定状況に応じてオプション扱いとし、Phase 1 でユーザ確認すること
 - フロントエンド候補A: React + TypeScript + Vite + Tailwind CSS + shadcn/ui
 - フロントエンド候補B: Svelte 5 + TypeScript + Vite + Tailwind CSS + shadcn-svelte
-- UI コンポーネント: Phase 1 で候補Aまたは候補Bを必ず選択し、React 系と Svelte 系を混在させない
+- UI コンポーネント: Phase 1 で候補Aまたは候補Bを必ず選択し、React 系と Svelte 系を混在させない。本メタプロンプトが候補をAとBに絞る理由は、shadcn 系のデザイントークンとコンポーネント命名を統一し、AIエージェントが生成する UI 規約の揺らぎを抑えるため
 - パッケージマネージャ: npm / pnpm / yarn / bun のうち Phase 1 で1つに確定し、lockfile を混在させない
 - Go 設定ファイル読込: `knadh/koanf` もしくは `spf13/viper`（採否は Phase 1 で確認）
 - ロガー: 標準 `log/slog`
 - Go リンタ: `golangci-lint`（実行時点の安定版）
 - フロントエンド品質: `eslint`、`prettier`、`typescript --noEmit`、選択スタックに応じた推奨 lint / format
-- テスト基盤: Go 標準 `testing`、フロントエンド unit/component test、必要に応じ Playwright
-- リリースツール: Wails build / GoReleaser / GitHub Actions の組み合わせを Phase 1 で確認
+- テスト基盤: Go 標準 `testing`、フロントエンド unit/component test、必要に応じ Playwright（または go-rod など Wails 対応の E2E ツールを Phase 1 で確定）
+- ビルド・リリース役割分担: 成果物ビルドの主軸は `wails build`（CGO 依存・WebView 同梱のため）、GoReleaser はリリース集約・配布アーティファクトのまとめ役として利用する。GoReleaser 単独で Wails アプリ全体をビルドさせない
 - 脆弱性チェック: `govulncheck`、`npm audit` または選択パッケージマネージャの監査
 - バージョン情報埋め込み: `-ldflags "-X main.version=..."` など
 
@@ -413,10 +413,12 @@ Phase 1 プロンプトが受け取る入力は、最低限以下を想定する
 - リポジトリ種別（新規 / 既存）
 - 作りたい GUI アプリの目的と最重要ユースケース
 - 対応 OS / ARCH（Windows / macOS / Linux × amd64 / arm64 のどれを対象にするか）
+- Wails バージョン（v2 安定版 / v3 のどちらを使うか。v3 は安定状況を確認して採否決定）
 - フロントエンドスタック選択:
   - React + TypeScript + Vite + Tailwind CSS + shadcn/ui
   - Svelte 5 + TypeScript + Vite + Tailwind CSS + shadcn-svelte
 - パッケージマネージャと lockfile 方針（npm / pnpm / yarn / bun のいずれか1つ）
+- i18n / l10n の採否（UI 文言を切替対応するか、固定言語か。採用時は採用ライブラリ候補も Phase 1 で確認）
 - UI 方針（業務ツール / 個人向けツール / 開発者向けツール / 管理画面 / クリエイティブツールなど）
 - 主要画面、画面遷移、ナビゲーション方式（サイドバー / タブ / トップバー / 単画面など）
 - データ保存方式（ローカルファイル / SQLite / OS keychain / 外部API / なし）
@@ -494,6 +496,7 @@ Phase 2 プロンプトが受け取る入力は、最低限以下を想定する
 - `coding_rules/` には Phase 3 で `AGENTS.md` へ移管するための規約ドラフトを置くこと
 - Phase 2 時点の `coding_rules/` には、Phase 3 で `AGENTS.md` を canonical にし、移管後は参照索引へ縮約する方針を明記すること
 - 既存リポジトリの場合、`current-state-report.md` と既存ドキュメントを参照する。既存仕様と新規方針に齟齬がある場合は勝手に解決せず、`open-questions.md` に記録してユーザ確認すること
+- ユーザが「停止」と言った場合に、状態管理ファイル（`current-state.md` / `next-actions.md` / `handoff.md`）を更新してから停止すること
 
 ### ドキュメント構成
 
@@ -503,20 +506,20 @@ Phase 2 プロンプトでは、以下の構成を基本として詳細仕様書
 例:
 
 - `architecture/overview.md`, `architecture/dependencies.md`, `architecture/layers.md`
-- `wails/app-lifecycle.md`, `wails/bindings.md`, `wails/events.md`, `wails/window-menu.md`
+- `wails/app-lifecycle.md`, `wails/bindings.md`, `wails/events.md`, `wails/window-menu.md`, `wails/dev-setup.md`（`wails dev` と Vite の連携、ポート、hot reload、プロキシ設定）
 - `backend/services.md`, `backend/domain.md`, `backend/storage.md`, `backend/config.md`
-- `frontend/stack.md`, `frontend/routing.md`, `frontend/state.md`, `frontend/api-client.md`
+- `frontend/stack.md`, `frontend/routing.md`, `frontend/state.md`, `frontend/api-client.md`, `frontend/i18n.md`（採用時のみ、ライブラリ・文言キー管理・切替方法）
 - `ui/screens.md`, `ui/components.md`, `ui/design-system.md`, `ui/accessibility.md`, `ui/responsive.md`
 - `state/client-state.md`, `state/server-state.md`, `state/persistence.md`
 - `data/schema.md`, `data/files.md`, `data/migrations.md`
 - `config/schema.md`, `config/lookup-order.md`, `config/examples.md`
 - `logging/levels.md`, `logging/fields.md`, `logging/sinks.md`
 - `errors/codes.md`, `errors/classification.md`, `errors/messages.md`
-- `testing/strategy.md`, `testing/go-unit.md`, `testing/frontend.md`, `testing/wails-integration.md`, `testing/e2e.md`
+- `testing/strategy.md`, `testing/go-unit.md`, `testing/frontend.md`, `testing/wails-integration.md`, `testing/e2e.md`, `testing/a11y.md`（axe-core / Playwright a11y 等のアクセシビリティテスト方針）
 - `ci/workflows.md`, `ci/matrix.md`, `ci/secrets.md`
 - `deployment/wails-build.md`, `deployment/signing.md`, `deployment/distribution.md`
 - `security/secrets.md`, `security/local-files.md`, `security/dependencies.md`
-- `coding_rules/index.md`, `coding_rules/go.md`, `coding_rules/frontend.md`, `coding_rules/wails.md`, `coding_rules/testing.md`
+- `coding_rules/index.md`, `coding_rules/go.md`, `coding_rules/wails.md`, `coding_rules/frontend.md`, `coding_rules/ui.md`, `coding_rules/logging.md`, `coding_rules/errors.md`, `coding_rules/quality.md`, `coding_rules/testing.md`, `coding_rules/version-build.md`, `coding_rules/cross-platform.md`（AGENTS.md の規約セクションと1対1対応するよう分割し、Phase 3 で移管しやすくする）
 
 ### `.ai/specs/index.md` 雛形
 
@@ -602,7 +605,7 @@ Phase 2 プロンプトでは、最低限以下を詳細仕様書群へ含めさ
 - ログレベル、ログ形式、ログ出力先、構造化キー命名（英語、snake_case）
 - エラーコード表（コード、意味、利用箇所、ユーザ向けメッセージ、復旧方針）
 - セキュリティ要求（秘密情報、OS keychain、ローカルファイル、外部通信、依存脆弱性）
-- テスト戦略（Go unit / frontend unit / component / Wails integration / E2E / visual regression の要否）
+- テスト戦略（Go unit / frontend unit / component / Wails integration / E2E / visual regression / a11y の要否、および採用ツール候補。Wails integration / E2E は Playwright / go-rod / Wails 公式ガイド準拠等から Phase 1 で確定し `testing/wails-integration.md` `testing/e2e.md` に固定する）
 - CI 構成（OS × Go × Node のマトリックス、frontend lint/typecheck/test、Wails build）
 - リリース・配布方針（Wails build、署名、公証、インストーラ、GitHub Releases）
 - バージョン埋め込み方針
@@ -727,7 +730,7 @@ Phase 3 で生成する Phase 4 用実装プロンプトは、別エージェン
 - `# 作業手順`（`plan.md` → `tasks.md` 駆動、1タスク完了ごとに `tasks.md` と `current-state.md` を更新）
 - `# git 操作ルール`（`git add` / `git commit` / `git push` は実行前に必ずユーザ確認、コミット粒度はタスク単位、`--no-verify` 等のフック回避禁止、`main` への直 push 可否は Phase 1 / Phase 2 合意に従う）
 - `# テスト・ビルド・lint の取扱い`（失敗時は自動的に仕様を曲げない、原因と対処案を `test-report.md` と `open-questions.md` に記録してからユーザ確認）
-- `# UI 検証ルール`（主要画面の表示崩れ、テキスト溢れ、フォーカス、キーボード操作、ダークモード、画面サイズ差異を確認する）
+- `# UI 検証ルール`（主要画面の表示崩れ、テキスト溢れ、フォーカス、キーボード操作、ダークモード、画面サイズ差異に加え、Wails 固有として ネイティブメニュー / ショートカット / システムトレイ / ファイルダイアログ / クリップボード / ウィンドウサイズ・位置の復元 / マルチモニタ / DPI 変動 を確認する）
 - `# 未確定事項の扱い`（仕様不足や齟齬を見つけたら勝手に補完せず `open-questions.md` に記録して該当領域の作業を停止し別領域へ進む）
 - `# 状態管理ファイル連携`（更新タイミング、更新対象、コミット粒度との関係）
 - `# 停止・再開`（停止時に更新するファイル、再開時に最初に読むファイル、再開前ユーザ確認事項）
@@ -781,6 +784,7 @@ Markdown 雛形例:
 
 ## UI 検証ルール
 - 主要画面の表示崩れ、テキスト溢れ、フォーカス、キーボード操作、ダークモード、画面サイズ差異を確認すること
+- Wails 固有要素として、ネイティブメニュー / ショートカット / システムトレイ / ファイルダイアログ / クリップボード / ウィンドウサイズ・位置の復元 / マルチモニタ / DPI 変動の動作を確認すること
 
 ## 未確定事項の扱い
 - 仕様不足や齟齬を見つけたら open-questions.md に記録し、当該領域の作業を停止して別領域へ進む
@@ -831,6 +835,8 @@ CI マトリックスの最低構成として、以下を明記すること。
 - `-race` は `ubuntu-latest` のみ実行可とする運用例も合わせて示す
 - キャッシュは Go modules / build cache / package manager cache を併用
 - Wails build に必要な OS 別依存は Phase 2 の `ci/workflows.md` に明記する
+- Wails は CGO に依存するため cross-compile を前提にしないこと。各 OS 向け成果物は対応 OS のランナー上でビルドすること（Windows は windows ランナー、macOS は macos ランナー、Linux は ubuntu ランナー）
+- macOS は Universal Binary（amd64 + arm64 を `lipo` で1バイナリ化）にするか、別アーティファクトとして出すかを Phase 1 で確認すること
 
 release は以下をユーザ確認してから扱うこと。
 
@@ -883,6 +889,7 @@ Phase 2 で `.ai/specs/coding_rules/` に書いた規約ドラフトは、Phase 
 - API client / Wails binding 呼び出しを分散させず、責務ある層へ集約する
 - 状態管理は UI state / server state / persistent state を分ける
 - lint / format / typecheck を通す
+- i18n / l10n を採用する場合は、ライブラリ（例: react-i18next / svelte-i18n / Format.js 等）、文言キー命名規約、デフォルト言語、フォールバック方針、文言キーの抽出・同期手順を仕様化する
 
 #### UI 規約
 
@@ -931,6 +938,7 @@ Phase 2 で `.ai/specs/coding_rules/` に書いた規約ドラフトは、Phase 
 - table driven test 推奨
 - coverage 目標を定義する（既定値の例: Go 70%、frontend は Phase 1 / Phase 2 で合意した値）
 - UI のロード、空状態、エラー状態、フォーム検証、キーボード操作をテスト対象に含める
+- アクセシビリティテスト（axe-core / Playwright a11y チェック等）の採否と対象画面を `testing/a11y.md` に明記する
 - `t.TempDir` / `t.Setenv` の活用方針を含める
 
 #### バージョン・ビルド規約
@@ -1017,5 +1025,11 @@ Phase 2 で `.ai/specs/coding_rules/` に書いた規約ドラフトは、Phase 
 - Phase 1 で `current-state-report.md` の生成要素チェックリストが明示されているか
 - Phase 1 で `.ai/session/*` 既存ファイルの取り扱い（追記 / `.ai/archive/session-YYYYMMDD-HHMMSS/` へ退避して新規初期化 / 既存活用）をユーザ確認する手順が明示されているか
 - CI マトリックスの Go / Node / OS 決定原則が明示されているか
+- Wails バージョン（v2 / v3）の選択が Phase 1 で確認されているか
+- CGO クロスコンパイル制約と OS 別ランナー使用が明示されているか
+- `wails build` を成果物ビルドの主軸とし、GoReleaser をリリース集約用とする役割分担が明示されているか
+- i18n / l10n 方針（採否と採用時の規約）と a11y テスト方針が明示されているか
+- Wails 固有 UI 検証要素（ネイティブメニュー / ショートカット / システムトレイ / ファイルダイアログ / クリップボード / ウィンドウ復元 / マルチモニタ / DPI 変動）が UI 検証ルールに含まれているか
+- macOS Universal Binary の扱い（lipo か別アーティファクトか）が Phase 1 で確認される設計になっているか
 - コンテキスト肥大化対策が具体的か
 - 日本語 Markdown として読みやすく、別のAIコードエージェントへそのまま渡せるか
