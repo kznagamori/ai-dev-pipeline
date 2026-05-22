@@ -50,7 +50,7 @@ Phase 1 から Phase 3 までのプロンプト内では、以下を「推奨デ
 ただし、ユーザが Phase 1 で別のスタックを選んだ場合は上書きを許容すること。
 
 - Go バージョン: Phase 1 で実行時点の公式サポート状況と既存 `go.mod` を確認し、最低対応バージョンを確定する
-- Wails: Phase 1 で実行時点の公式ドキュメント、既存 `wails.json`、既存プロジェクト構成を確認し、利用バージョン（v2 / v3 のいずれか）を確定する。v3 は安定状況に応じてオプション扱いとし、Phase 1 でユーザ確認すること
+- Wails: Phase 1 で実行時点の公式ドキュメント、既存 `wails.json`、既存プロジェクト構成を確認し、利用バージョンを確定する。プレビュー版・ベータ版・RC 版を採用する場合は、安定版ではないリスクを明記してユーザ承認を必須にすること
 - フロントエンド候補A: React + TypeScript + Vite + Tailwind CSS + shadcn/ui
 - フロントエンド候補B: Svelte 5 + TypeScript + Vite + Tailwind CSS + shadcn-svelte
 - UI コンポーネント: Phase 1 で候補Aまたは候補Bを必ず選択し、React 系と Svelte 系を混在させない。本メタプロンプトが候補をAとBに絞る理由は、shadcn 系のデザイントークンとコンポーネント命名を統一し、AIエージェントが生成する UI 規約の揺らぎを抑えるため
@@ -59,8 +59,8 @@ Phase 1 から Phase 3 までのプロンプト内では、以下を「推奨デ
 - ロガー: 標準 `log/slog`
 - Go リンタ: `golangci-lint`（実行時点の安定版）
 - フロントエンド品質: `eslint`、`prettier`、`typescript --noEmit`、選択スタックに応じた推奨 lint / format
-- テスト基盤: Go 標準 `testing`、フロントエンド unit/component test、必要に応じ Playwright（または go-rod など Wails 対応の E2E ツールを Phase 1 で確定）
-- ビルド・リリース役割分担: 成果物ビルドの主軸は `wails build`（CGO 依存・WebView 同梱のため）、GoReleaser はリリース集約・配布アーティファクトのまとめ役として利用する。GoReleaser 単独で Wails アプリ全体をビルドさせない
+- テスト基盤: Go 標準 `testing`、フロントエンド unit/component test、必要に応じ Playwright などの E2E / UI 自動検証ツールを Phase 1 で確定
+- ビルド・リリース役割分担: 成果物ビルドの主軸は `wails build`（OS 固有 WebView / ネイティブ依存 / ツールチェーンの影響を受けるため）、GoReleaser はリリース集約・配布アーティファクトのまとめ役として利用する。GoReleaser 単独で Wails アプリ全体をビルドさせない
 - 脆弱性チェック: `govulncheck`、`npm audit` または選択パッケージマネージャの監査
 - バージョン情報埋め込み: `-ldflags "-X main.version=..."` など
 
@@ -413,7 +413,7 @@ Phase 1 プロンプトが受け取る入力は、最低限以下を想定する
 - リポジトリ種別（新規 / 既存）
 - 作りたい GUI アプリの目的と最重要ユースケース
 - 対応 OS / ARCH（Windows / macOS / Linux × amd64 / arm64 のどれを対象にするか）
-- Wails バージョン（v2 安定版 / v3 のどちらを使うか。v3 は安定状況を確認して採否決定）
+- Wails バージョン（実行時点の安定版を既定候補とし、プレビュー版・ベータ版・RC 版を採用する場合はリスクを明記して承認を取る）
 - フロントエンドスタック選択:
   - React + TypeScript + Vite + Tailwind CSS + shadcn/ui
   - Svelte 5 + TypeScript + Vite + Tailwind CSS + shadcn-svelte
@@ -425,6 +425,8 @@ Phase 1 プロンプトが受け取る入力は、最低限以下を想定する
 - Go backend と frontend の責務分担
 - Wails の機能利用範囲（Go メソッドバインディング、イベント、メニュー、システムトレイ、ファイルダイアログ、クリップボード、ウィンドウ制御など）
 - 配布形態（単体アプリ、インストーラ、GitHub Releases、社内配布、コード署名・公証の要否）
+- macOS Universal Binary / OS別個別アーティファクトのどちらを採用するか
+- E2E / visual regression / a11y テストの採否と対象範囲
 - 公開範囲（社内 / OSS 公開）と README / UI 文言の言語選択（日本語 / 英語）
 - `.ai/` 配下を Git 追跡対象に含める方針と、実際のコミット操作はユーザ確認後に行うこと
 
@@ -605,7 +607,7 @@ Phase 2 プロンプトでは、最低限以下を詳細仕様書群へ含めさ
 - ログレベル、ログ形式、ログ出力先、構造化キー命名（英語、snake_case）
 - エラーコード表（コード、意味、利用箇所、ユーザ向けメッセージ、復旧方針）
 - セキュリティ要求（秘密情報、OS keychain、ローカルファイル、外部通信、依存脆弱性）
-- テスト戦略（Go unit / frontend unit / component / Wails integration / E2E / visual regression / a11y の要否、および採用ツール候補。Wails integration / E2E は Playwright / go-rod / Wails 公式ガイド準拠等から Phase 1 で確定し `testing/wails-integration.md` `testing/e2e.md` に固定する）
+- テスト戦略（Go unit / frontend unit / component / Wails integration / E2E / visual regression / a11y の要否、および採用ツール候補。Wails integration / E2E は Playwright などの UI 自動検証、Wails 公式ガイド準拠、または手動検証手順から Phase 1 で確定し `testing/wails-integration.md` `testing/e2e.md` に固定する）
 - CI 構成（OS × Go × Node のマトリックス、frontend lint/typecheck/test、Wails build）
 - リリース・配布方針（Wails build、署名、公証、インストーラ、GitHub Releases）
 - バージョン埋め込み方針
@@ -835,8 +837,8 @@ CI マトリックスの最低構成として、以下を明記すること。
 - `-race` は `ubuntu-latest` のみ実行可とする運用例も合わせて示す
 - キャッシュは Go modules / build cache / package manager cache を併用
 - Wails build に必要な OS 別依存は Phase 2 の `ci/workflows.md` に明記する
-- Wails は CGO に依存するため cross-compile を前提にしないこと。各 OS 向け成果物は対応 OS のランナー上でビルドすること（Windows は windows ランナー、macOS は macos ランナー、Linux は ubuntu ランナー）
-- macOS は Universal Binary（amd64 + arm64 を `lipo` で1バイナリ化）にするか、別アーティファクトとして出すかを Phase 1 で確認すること
+- Wails は OS 固有の WebView / ネイティブ依存 / ツールチェーンの影響を受けるため、cross-compile を既定前提にしないこと。各 OS 向け成果物は対応 OS のランナー上でビルドすること（Windows は windows ランナー、macOS は macos ランナー、Linux は ubuntu ランナー）
+- macOS は Universal Binary / Universal App（amd64 + arm64 を統合）にするか、arch 別アーティファクトとして出すかを Phase 1 で確認すること
 
 release は以下をユーザ確認してから扱うこと。
 
@@ -1025,11 +1027,11 @@ Phase 2 で `.ai/specs/coding_rules/` に書いた規約ドラフトは、Phase 
 - Phase 1 で `current-state-report.md` の生成要素チェックリストが明示されているか
 - Phase 1 で `.ai/session/*` 既存ファイルの取り扱い（追記 / `.ai/archive/session-YYYYMMDD-HHMMSS/` へ退避して新規初期化 / 既存活用）をユーザ確認する手順が明示されているか
 - CI マトリックスの Go / Node / OS 決定原則が明示されているか
-- Wails バージョン（v2 / v3）の選択が Phase 1 で確認されているか
-- CGO クロスコンパイル制約と OS 別ランナー使用が明示されているか
+- Wails バージョン選択と、プレビュー版・ベータ版・RC 版を採用する場合のユーザ承認が Phase 1 で確認されているか
+- Wails の OS 固有 WebView / ネイティブ依存 / ツールチェーン制約と OS 別ランナー使用が明示されているか
 - `wails build` を成果物ビルドの主軸とし、GoReleaser をリリース集約用とする役割分担が明示されているか
 - i18n / l10n 方針（採否と採用時の規約）と a11y テスト方針が明示されているか
 - Wails 固有 UI 検証要素（ネイティブメニュー / ショートカット / システムトレイ / ファイルダイアログ / クリップボード / ウィンドウ復元 / マルチモニタ / DPI 変動）が UI 検証ルールに含まれているか
-- macOS Universal Binary の扱い（lipo か別アーティファクトか）が Phase 1 で確認される設計になっているか
+- macOS Universal Binary / Universal App の扱い（統合アーティファクトか arch 別アーティファクトか）が Phase 1 で確認される設計になっているか
 - コンテキスト肥大化対策が具体的か
 - 日本語 Markdown として読みやすく、別のAIコードエージェントへそのまま渡せるか
