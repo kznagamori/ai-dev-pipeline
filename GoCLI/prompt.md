@@ -50,11 +50,11 @@ Phase 1 から Phase 3 までのプロンプトを作成してください。
 Phase 1 から Phase 3 までのプロンプト内では、以下を「推奨デフォルト」として明示すること。
 ユーザが Phase 1 で別のスタックを選んだ場合は上書きを許容すること。
 
-- Go バージョン: 1.22 以降（`go.mod` の `go` ディレクティブは 1.22 以上を要求）
+- Go バージョン: Phase 1 で実行時点の公式サポート状況と既存 `go.mod` を確認し、最低対応バージョンを確定する
 - CLI フレームワーク: `spf13/cobra`
 - 設定ファイル読込: `spf13/viper`（採否は Phase 1 で確認）
 - ロガー: 標準 `log/slog`
-- リンタ: `golangci-lint`（最新安定版）
+- リンタ: `golangci-lint`（実行時点の安定版）
 - リリースツール: GoReleaser
 - 脆弱性チェック: `govulncheck`
 - テスト基盤: 標準 `testing` + 必要に応じ `testscript` + golden file
@@ -129,7 +129,7 @@ Phase 1 から Phase 3 までのプロンプト内では、以下を「推奨デ
     ci/
     deployment/
     security/
-    coding_rules/                # AGENTS.md / CLAUDE.md を canonical として参照する index
+    coding_rules/                # Phase 3 で AGENTS.md / CLAUDE.md へ移管する規約の索引
   implementation/
     prompt.md                    # Phase 3 が生成する「Phase 4 用の実装プロンプト本文」
     plan.md
@@ -141,7 +141,9 @@ AGENTS.md                        # Phase 3 で生成
 CLAUDE.md                        # Phase 3 で生成（AGENTS.md を参照する短い案内ファイルでよい）
 ```
 
-`.ai/` 配下のすべてのファイル（`session/` 含む）はリポジトリへコミットすること、と各プロンプトに明記させること。
+`.ai/` 配下のすべてのファイル（`session/` 含む）は、原則として Git 追跡対象に含めることを各プロンプトに明記させること。
+ただし、実際の `git add` / `git commit` / `git push` はユーザ確認後にのみ行わせること。
+また、機密情報・個人情報・トークン・秘密鍵・未公開の認証情報は `.ai/` 配下にも記録しないこと。
 これによりリポジトリを「単一の真実の源」とし、複数端末・複数エージェント間で状態を同期する。
 
 ### Phase 1: 概略仕様書作成
@@ -150,7 +152,8 @@ CLAUDE.md                        # Phase 3 で生成（AGENTS.md を参照する
 このフェーズでは実装しない。仕様を確定する前に、必ずユーザ確認を行う。
 
 冒頭で「新規リポジトリ / 既存リポジトリへの追加・改修」の別をユーザに必ず確認させること。
-既存リポジトリの場合は、概略仕様書のドラフトに着手する前に、コード・設定・CI を読んで `.ai/specs/overview/current-state-report.md` を生成すること。
+既存リポジトリの場合は、概略仕様書のドラフトに着手する前に、まずファイル一覧・既存ドキュメント・設定ファイル・CI 定義を棚卸しし、目的に必要な範囲だけコードを読んで `.ai/specs/overview/current-state-report.md` を生成すること。
+既存コードを無目的に全読みしないこと。
 
 ### Phase 2: 詳細仕様書群作成
 
@@ -381,18 +384,19 @@ Phase 1 プロンプトが受け取る入力は、最低限以下を想定する
 - ユーザが「停止」と言った場合に、状態管理ファイルを更新してから停止すること
 - 冒頭で「新規 / 既存」の別を必ず確認し、既存の場合は `.ai/specs/overview/current-state-report.md` を生成する分岐に入ること
 
-### Phase 1 冒頭ユーザ確認の必須項目
+### Phase 1 初期確認の必須項目
 
-各 Phase 1 プロンプトには、最低限以下を「最初に確認する」ものとして明示すること。
+各 Phase 1 プロンプトには、最低限以下を初期確認項目として明示すること。
+ただし、以下を一括質問してはいけない。重要度順に、1回につき1項目だけユーザへ質問すること。
 
 - リポジトリ種別（新規 / 既存）
 - 公開範囲（社内 / OSS 公開）と README / ヘルプの言語選択（日本語 / 英語）
-- 推奨スタック（Go 1.22+ / Cobra / log/slog / golangci-lint / GoReleaser）を採用するか、差し替えるか
+- 推奨スタック（Phase 1 で確定する Go バージョン / Cobra / log/slog / golangci-lint / GoReleaser）を採用するか、差し替えるか
 - 対応 OS / ARCH（linux, macos, windows × amd64, arm64 の標準セットでよいか）
 - 配布形態（GitHub Releases、`go install`、Homebrew、Scoop、Docker のどれを使うか）
 - リリース時の追加要素（cosign 署名、SBOM 生成）の要否
 - 設定ファイルの探索順（推奨: `--config` > `$XDG_CONFIG_HOME` > `~/.config/<name>/` > カレント）
-- `.ai/` 配下を Git 追跡すること（推奨: 全コミット）
+- `.ai/` 配下を Git 追跡対象に含める方針と、実際のコミット操作はユーザ確認後に行うこと
 
 ### 成果物
 
@@ -451,7 +455,7 @@ Phase 2 プロンプトが受け取る入力は、最低限以下を想定する
 - Phase 1 の未確定事項を勝手に詳細仕様へ昇格させないこと
 - 詳細化の過程で追加確認が必要な場合は、1回につき1項目だけユーザへ質問すること
 - ドキュメント構成を確定する前にユーザ確認を行うこと
-- `coding_rules/` は AGENTS.md / CLAUDE.md を canonical として参照する index に留めること（Phase 3 で生成される AGENTS.md / CLAUDE.md と内容重複させない）
+- `coding_rules/` は Phase 3 で生成する AGENTS.md / CLAUDE.md への移管方針を示す index に留めること（Phase 3 で生成される AGENTS.md / CLAUDE.md と内容重複させない）
 
 ### ドキュメント構成
 
@@ -469,7 +473,7 @@ Phase 2 プロンプトでは、以下の構成を基本として詳細仕様書
 - `ci/workflows.md`, `ci/matrix.md`, `ci/secrets.md`
 - `deployment/goreleaser.md`, `deployment/signing.md`, `deployment/distribution.md`
 - `security/secrets.md`, `security/dependencies.md`
-- `coding_rules/index.md`（AGENTS.md / CLAUDE.md を参照する）
+- `coding_rules/index.md`（Phase 3 で AGENTS.md / CLAUDE.md へ移管する規約の索引）
 
 ### `.ai/specs/index.md` 雛形
 
@@ -494,7 +498,7 @@ Phase 2 プロンプトには、以下の雛形を内包させ、エージェン
 - ci/            … GitHub Actions 構成
 - deployment/    … GoReleaser / 配布
 - security/      … 秘密情報・依存
-- coding_rules/  … AGENTS.md / CLAUDE.md を参照する index
+- coding_rules/  … Phase 3 で AGENTS.md / CLAUDE.md へ移管する規約の索引
 
 ## タスク種別ごとの参照先
 - 新しいサブコマンドを追加する → cli/commands.md, cli/flags.md, testing/unit.md
@@ -593,7 +597,7 @@ Phase 3 プロンプトには、最低限以下の進捗管理ファイルを生
 # implementation plan
 
 ## 実装方針
-- 採用スタック: Go 1.22+ / Cobra / log/slog / golangci-lint / GoReleaser
+- 採用スタック: Phase 1 で確定した Go バージョン / Cobra / log/slog / golangci-lint / GoReleaser
 - 言語方針: ユーザ向け出力は日本語、識別子・ログキーは英語
 - 既存 / 新規: <Phase 1 で決定>
 
@@ -656,7 +660,7 @@ Phase 3 プロンプトでは、以下を対象にした CI/CD 設計と実装�
 CI マトリックスの最低構成として、以下を明記すること。
 
 - OS: `ubuntu-latest` / `macos-latest` / `windows-latest`
-- Go: 直近2系のメジャーバージョン（例: 1.22 と 1.23）
+- Go: 実行時点の公式サポート状況を確認し、現行安定版と1つ前の安定版を候補にする
 - `-race` は `ubuntu-latest` のみ実行可とする運用例も合わせて示す
 - キャッシュは Go modules と build cache を併用
 
@@ -802,6 +806,6 @@ Phase 3 プロンプトでは、AIコードエージェント向けファイル�
 - 標準フラグ規約・終了コード規約・設定ファイル探索順・バージョン埋め込み・cross-compile ターゲット・CI マトリックス・GoReleaser 採用が明示されているか
 - 言語ハイブリッド方針（ユーザ向け出力は日本語、識別子・ログキーは英語）が一貫して書かれているか
 - スラッシュコマンド / MCP / IDE 固有機能 / エージェント固有タスクシステムへの依存が排除されているか
-- `.ai/` 配下を全コミットする方針が明示されているか
+- `.ai/` 配下を Git 追跡対象に含める方針と、実際のコミット操作前にユーザ確認する方針が明示されているか
 - コンテキスト肥大化対策が具体的か
 - 日本語 Markdown として読みやすく、別のAIコードエージェントへそのまま渡せるか
